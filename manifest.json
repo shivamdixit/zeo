@@ -13,7 +13,8 @@
             "js": [
                 "libs/jquery-2.1.1.min.js",
                 "js/zeocode.js"
-            ]
+            ],
+            "all_frames": true
         }
     ],
 
