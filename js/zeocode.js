@@ -1,7 +1,7 @@
+var mapFound = false;
+
 $(document).ready(function(){
     var parameterName = "ll";
-    var mapFound = false;
-    var latitude, longitude;
 
     setTimeout(function() {
         $(document).find('a').each(function(index) {
@@ -15,7 +15,7 @@ $(document).ready(function(){
                     var lat = latLng.split(",")[0];
                     var lng = latLng.split(",")[1];
                     displayWidget(lat, lng, this);
-                    alert("1. Map found. Latitude is: " + lat + ", Longitude is:" + lng);
+                    // alert("1. Map found. Latitude is: " + lat + ", Longitude is:" + lng);
                     return false; // Only show one instance of map
                 }
             }
@@ -31,7 +31,7 @@ $(document).ready(function(){
                 var lng = latLng.split(",")[1];
 
                 displayWidget(lat, lng, this);
-                alert("2. Map found. Latitude is: " + lat + ", Longitude is:" + lng);
+                // alert("2. Map found. Latitude is: " + lat + ", Longitude is:" + lng);
             }
         }
     });
@@ -49,7 +49,7 @@ $(document).ready(function(){
                 var lat = latLng.split(",")[0];
                 var lng = latLng.split(",")[1];
                 displayWidget(lat, lng, this);
-                alert("3. Map found. Latitude is: " + lat + ", Longitude is:" + lng);
+                // alert("3. Map found. Latitude is: " + lat + ", Longitude is:" + lng);
             }
         } else {
             var possibility2 = decodeURIComponent(
@@ -64,17 +64,35 @@ $(document).ready(function(){
                     var lat = latLng.split(",")[0];
                     var lng = latLng.split(",")[1];
                     displayWidget(lat, lng, this);
-                    alert("4. Map found. Latitude is: " + lat + ", Longitude is:" + lng);
+                    // alert("4. Map found. Latitude is: " + lat + ", Longitude is:" + lng);
                 }
             }
         }
     });
 
     function displayWidget(lat, lng, event) {
-        chrome.runtime.sendMessage({'newIconPath' : '../icon.png'});
+        mapFound = true;
+        chrome.runtime.sendMessage({'type': 'changeIcon', 'newIconPath' : '../icon.png'});
         console.log(event);
-        $(event).parent().after('<div class="zeocode"><input type="button" name="zeo" value="Create Zeo"></div>');
+        var btnUrl = chrome.extension.getURL('images/button.png');
+        $(event).parent().after('<div id="zeocodeExtCnt" style="display: block; margin: 5px; z-index: 999999; cursor: pointer;" data-attr="' + lat +',' + lng + ' "><img src="' + btnUrl + '" width="200px" id="createZeoExtBtn"/></div>');
     }
+});
+
+$(document).on('click', '#createZeoExtBtn', function(){
+    var attr = $('#zeocodeExtCnt').attr('data-attr').split(',');
+    var createBtnUrl = chrome.extension.getURL('images/button.png');
+    var waitBtnUrl = chrome.extension.getURL('images/wait.png');
+
+    $('#createZeoExtBtn').attr('src', waitBtnUrl);
+
+    chrome.runtime.sendMessage({'type': 'createZeo', 'lat': attr[0], 'lng': attr[1]}, function(data) {
+        alert("Zeocode created! " + data.zeocode + '\n\n Share: http://zeoco.de/' + data.zeocode);
+        $('#createZeoExtBtn').attr('src', createBtnUrl);
+        $('#createZeoExtBtn').attr('disabled', 'disabled');
+
+        console.log(data);
+    });
 });
 
 function extractLatLng(string) {
@@ -89,3 +107,17 @@ $.urlParam = function(url, parameter) {
        return results[1] || 0;
     }
 }
+
+
+// Listen for incoming requests from browser_action script
+chrome.extension.onMessage.addListener(function(request, sender, sendResponse) {
+    if (request.method == 'createZeo') {
+        if (!mapFound) {
+            sendResponse("No map found!");
+            return true;
+        }
+        $('#createZeoExtBtn').click();
+    } else {
+        sendResponse({}); // snub them.
+    }
+});
